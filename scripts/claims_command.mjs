@@ -8,3 +8,5 @@ export const findCommand = (text) =>
     .split("\n")
     .map((line) => line.trim())
     .find((line) => line.startsWith("/claim") || line.startsWith("/unclaim"));
+
+export const isStale = (times, now, days) => Math.max(0, ...times) <= now - days * 86400e3;

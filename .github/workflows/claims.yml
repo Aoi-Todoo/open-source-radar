@@ -89,13 +89,16 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       issues: write
+      contents: read
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const { owner, repo } = context.repo;
             const days = Number(process.env.STALE_DAYS);
-            const cutoff = Date.now() - days * 86400e3;
+            const now = Date.now();
+            const { isStale } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/claims_command.mjs`);
             const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner, repo, state: "open", assignee: "*", per_page: 100,
             });
@@ -118,7 +121,7 @@ jobs:
                 ...comments.filter((c) => claimers.includes(c.user.login)).map((c) => Date.parse(c.created_at)),
                 ...events.filter((e) => e.event === "assigned").map((e) => Date.parse(e.created_at)),
               ];
-              if (Math.max(0, ...times) > cutoff) continue;
+              if (!isStale(times, now, days)) continue;
               await github.rest.issues.removeAssignees({ owner, repo, issue_number: issue.number, assignees: claimers });
               await github.rest.issues.createComment({
                 owner, repo, issue_number: issue.number,
